@@ -29,23 +29,32 @@ import (
 	"math"
 )
 
+const graphMargin float64 = 5.0
+
 type Graph struct {
 	gtk.DrawingArea
-	pixmap *gdk.Pixmap
-	gc     *gdk.GC
-	minX   float64
-	maxX   float64
-	minY   float64
-	maxY   float64
+	pixmap         *gdk.Pixmap
+	gc             *gdk.GC
+	minX           float64
+	maxX           float64
+	minY           float64
+	maxY           float64
+	xMinorInterval float64
+	xMajorInterval float64
+	yMinorInterval float64
+	yMajorInterval float64
+	scaleX         func(float64) int
+	scaleY         func(float64) int
 }
 
 func NewGraph() *Graph {
-	graph := &Graph{*gtk.NewDrawingArea(), nil, nil, -1, 1, -1, 1}
+	graph := &Graph{*gtk.NewDrawingArea(), nil, nil, -10.0, 10.0, -4.0, 4.0, 0.5, 100.0, 0.5, 100.0, nil, nil}
 	graph.Connect("expose_event", func() {
 		if graph.pixmap != nil {
 			graph.GetWindow().GetDrawable().DrawDrawable(graph.gc, graph.pixmap.GetDrawable(), 0, 0, 0, 0, -1, -1)
 		}
 	})
+
 	graph.Connect("configure_event", func(ctx *glib.CallbackContext) {
 		if graph.pixmap != nil {
 			graph.pixmap.Unref()
@@ -56,37 +65,65 @@ func NewGraph() *Graph {
 			allocation.Height,
 			-1)
 		graph.gc = gdk.NewGC(graph.pixmap.GetDrawable())
-		graph.Plot()
+		graph.setScale()
+		graph.plot()
 	})
+
 	graph.SetEvents(int(gdk.EXPOSE | gdk.CONFIGURE))
 	return graph
 }
 
-func (g *Graph) Plot() {
+func (g *Graph) setScale() {
 	allocation := g.GetAllocation()
-	drawable := g.pixmap.GetDrawable()
-	scaleY := func(val float64) int {
-		return allocation.Height - int(5.0+float32(val+3.0)*float32(allocation.Height-10)/6.0)
+	g.scaleY = func(val float64) int {
+		return allocation.Height - int(graphMargin+(val-g.minY)*(float64(allocation.Height)-graphMargin*2)/(g.maxY-g.minY))
 	}
-	scaleX := func(val float64) int {
-		return int(5.0 + float32(val+10.0)*float32(allocation.Width-10)/20.0)
+	g.scaleX = func(val float64) int {
+		return int(graphMargin + ((val-g.minX)*(float64(allocation.Width)-graphMargin*2))/(g.maxX-g.minX))
 	}
+}
+
+func (g *Graph) clear() {
 	g.gc.SetRgbFgColor(gdk.NewColor("white"))
-	drawable.DrawRectangle(g.gc, true, 0, 0, -1, -1)
+	g.pixmap.GetDrawable().DrawRectangle(g.gc, true, 0, 0, -1, -1)
 	g.gc.SetRgbBgColor(gdk.NewColor("white"))
+}
+
+func (g *Graph) drawLineScaled(x1 float64, y1 float64, x2 float64, y2 float64) {
+	g.pixmap.GetDrawable().DrawLine(g.gc, g.scaleX(x1), g.scaleY(y1), g.scaleX(x2), g.scaleY(y2))
+}
+
+func (g *Graph) drawGrid(xInterval float64, yInterval float64) {
+
+	if xInterval > 0 {
+		for x := math.Ceil((g.minX+(g.maxX-g.minX)/1000)/xInterval) * xInterval; x < g.maxX; x += xInterval {
+			g.drawLineScaled(x, g.minY, x, g.maxY)
+		}
+	}
+	if yInterval > 0 {
+		for y := math.Ceil((g.minY+(g.maxY-g.minY)/1000)/yInterval) * yInterval; y < g.maxY; y += yInterval {
+			g.drawLineScaled(g.minX, y, g.maxX, y)
+		}
+	}
+}
+
+func (g *Graph) plotGrid() {
+
+	// First draw the minor grid
 	g.gc.SetRgbFgColor(gdk.NewColor("grey"))
-	/* Going to draw a unit grid, +- 10 horiz nad += 3 verticallu */
-	for y := float64(-2); y <= float64(2); y++ {
-		drawable.DrawLine(g.gc, 5, scaleY(y), allocation.Width-5, scaleY(y))
-	}
-	for x := float64(-9); x <= float64(9); x++ {
-		drawable.DrawLine(g.gc, scaleX(x), 5, scaleX(x), allocation.Height-5)
-	}
+	g.drawGrid(g.xMinorInterval, g.yMinorInterval)
+
+	// And the major grid
 	g.gc.SetRgbFgColor(gdk.NewColor("black"))
-	drawable.DrawLine(g.gc, 5, scaleY(0.0), allocation.Width-5, scaleY(0.0))
-	drawable.DrawLine(g.gc, scaleX(0.0), 5, scaleX(0.0), allocation.Height-5)
+	g.drawGrid(g.xMajorInterval, g.yMajorInterval)
+}
+
+func (g *Graph) plot() {
+	g.clear()
+	g.plotGrid()
+
 	g.gc.SetRgbFgColor(gdk.NewColor("blue"))
 	for x := -math.Pi * 3.0; x <= math.Pi*3.0; x += 0.1 {
-		drawable.DrawLine(g.gc, scaleX(x), scaleY(0), scaleX(x), scaleY(3.0*math.Sin(x)/x))
+		g.drawLineScaled(x, 0, x, 3.0*math.Sin(x)/x)
 	}
 }
