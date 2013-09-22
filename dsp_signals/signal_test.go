@@ -1,5 +1,5 @@
 /**
-dsp.go
+singal_test.go
 Copyright (c) 2013 Nick Twyman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,39 +20,27 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE. To change this template use File | Settings | File Templates.
 */
-package main
+package signal
 
 import (
-	"github.com/mattn/go-gtk/glib"
-	"github.com/mattn/go-gtk/gtk"
-	"github.com/ntwyman/go-dsp/dsp_gtk"
-	"os"
+	"testing"
 )
 
-func deleteEvent(ctx *glib.CallbackContext) bool {
-	//log.Println("delete-event called", ctx)
-	return false
-}
+func TestDeltaDirac(t *testing.T) {
 
-func destroyEvent(ctx *glib.CallbackContext) {
-	//log.Println("destroy-event called", ctx)
-	gtk.MainQuit()
-}
+	if min, max := DiracDelta.Range(); min != 0 || max != 0 {
+		t.Error("Range for DiracDel")
+	}
 
-func main() {
-	gtk.Init(&os.Args)
-	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
-	window.SetTitle("DSP Playground")
+	if DiracDelta.MaxAmplitude() != 1.0 {
+		t.Error("Amplitude for dirac delta")
+	}
 
-	window.Connect("delete-event", deleteEvent)
-	window.Connect("destroy", destroyEvent)
-	vbox := gtk.NewVBox(true, 0)
-	vbox.SetBorderWidth(5)
-
-	vbox.Add(dsp_gtk.NewGraph())
-	window.Add(vbox)
-	window.SetSizeRequest(1010, 300)
-	window.ShowAll()
-
-	gtk.Main()
+	for i := -1000; i < 1000; i++ {
+		if val := DiracDelta.Get(i); i == 0 && val != 1.0 {
+			t.Error("DetlaDirec zero value")
+		} else if i != 0 && val != 0.0 {
+			t.Error("DetlaDirec non-zero value")
+		}
+	}
 }
