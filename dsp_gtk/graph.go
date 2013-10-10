@@ -26,6 +26,7 @@ import (
 	"github.com/mattn/go-gtk/gdk"
 	"github.com/mattn/go-gtk/glib"
 	"github.com/mattn/go-gtk/gtk"
+	"github.com/ntwyman/go-dsp/dsp_signals"
 	"math"
 )
 
@@ -48,7 +49,7 @@ type Graph struct {
 }
 
 func NewGraph() *Graph {
-	graph := &Graph{*gtk.NewDrawingArea(), nil, nil, -10.0, 10.0, -4.0, 4.0, 0.5, 100.0, 0.5, 100.0, nil, nil}
+	graph := &Graph{*gtk.NewDrawingArea(), nil, nil, -20.0, 20.0, -2.0, 2.0, 1, 10.0, 0.1, 1.0, nil, nil}
 	graph.Connect("expose_event", func() {
 		if graph.pixmap != nil {
 			graph.GetWindow().GetDrawable().DrawDrawable(graph.gc, graph.pixmap.GetDrawable(), 0, 0, 0, 0, -1, -1)
@@ -123,7 +124,10 @@ func (g *Graph) plot() {
 	g.plotGrid()
 
 	g.gc.SetRgbFgColor(gdk.NewColor("blue"))
-	for x := -math.Pi * 3.0; x <= math.Pi*3.0; x += 0.1 {
-		g.drawLineScaled(x, 0, x, 3.0*math.Sin(x)/x)
+	g.gc.S
+
+	s := signal.Step{-3, complex128(1.25)}
+	for x := -20; x <= 20; x++ {
+		g.drawLineScaled(float64(x), 0, float64(x), real(s.Get(x)))
 	}
 }

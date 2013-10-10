@@ -33,23 +33,45 @@ type DiscreteSignal interface {
 }
 
 type Delta struct {
-	offset    int
-	amplitude complex128
+	Offset    int
+	Amplitude complex128
 }
 
 func (d *Delta) Get(N int) complex128 {
-	if N == d.offset {
-		return d.amplitude
+	if N == d.Offset {
+		return d.Amplitude
 	}
 	return 0
 }
 
 func (d *Delta) Range() (Min int, Max int) {
-	return d.offset, d.offset
+	return d.Offset, d.Offset
 }
 
 func (d *Delta) MaxAmplitude() float64 {
-	return cmplx.Abs(d.amplitude)
+	return cmplx.Abs(d.Amplitude)
 }
 
 var DiracDelta Delta = Delta{0, complex128(1.0)}
+
+type Step struct {
+	Offset    int
+	Amplitude complex128
+}
+
+func (step *Step) Get(N int) complex128 {
+	if N >= step.Offset {
+		return step.Amplitude
+	}
+	return 0.0
+}
+
+func (step *Step) Range() (Min int, Max int) {
+	return step.Offset, int(^uint(0) >> 1) // AKA MaxInt
+}
+
+func (step *Step) MaxAmplitude() float64 {
+	return cmplx.Abs(step.Amplitude)
+}
+
+var UnitStep = Step{0, complex128(1.0)}
